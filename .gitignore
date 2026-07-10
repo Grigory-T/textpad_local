@@ -1,0 +1,11 @@
+config.py
+pad.txt
+tabs.json
+tabs.json.bak
+tabs.json.bad.*
+tabs/
+deleted/
+mirror/
+__pycache__/
+*.pyc
+*.tmp
