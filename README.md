@@ -40,7 +40,7 @@ Edit `config.py`:
 # Bind to the required private interface, or use 0.0.0.0 with a LAN-only firewall.
 HOST = '0.0.0.0'
 
-# Keep port 80 so users can type only the IP address (no ":port").
+# Use an unprivileged port by default; port 80 requires CAP_NET_BIND_SERVICE.
 PORT = 8080
 
 # Optional plain-text mirror directory.
