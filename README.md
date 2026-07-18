@@ -18,6 +18,7 @@ outside Git.
 - Deleted tab files are archived on disk under `deleted/`
 - Real-time sync across all connected clients on the same tab via SSE (no refresh needed)
 - Line numbers and cursor position indicator
+- IDE-style `Tab` and `Shift+Tab` indentation for the cursor or all selected lines
 - Clear all button
 - Dark theme, monospace font
 - One-way plain-text tab mirror for the shared SMB folder
@@ -78,6 +79,7 @@ ip -4 addr show | grep -E 'inet 192\\.168\\.'
 Open `http://<private-host-address>:<port>/`.
 
 - **Type** — content saves automatically after a short pause
+- **Indent** — `Tab` indents the current selection; `Shift+Tab` removes one tab or up to four leading spaces from each selected line
 - **Tabs** — numbered tab names are at the top; use `add tab` to create a new one after the active tab
 - **Rename** — edit the current tab name and press `rename tab`
 - **Delete tab** — deletes the current tab; the last remaining tab cannot be deleted

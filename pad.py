@@ -576,7 +576,7 @@ button:disabled { color: #555; cursor: default; border-color: #333; }
 #clear:hover { color: #c66; border-color: #c66; }
 #editor { display: flex; flex: 1; border: 1px solid #444; overflow: hidden; background: #111; }
 #lines { padding: 8px 6px 8px 8px; background: #1e1e1e; color: #555; font-size: 14px; line-height: 1.5; text-align: right; user-select: none; overflow: hidden; white-space: pre; min-width: 2.5em; border-right: 1px solid #333; }
-textarea { flex: 1; background: #111; color: #ddd; border: none; padding: 8px; font-size: 14px; font-family: monospace; line-height: 1.5; resize: none; outline: none; white-space: pre; overflow-x: auto; wrap: off; }
+textarea { flex: 1; background: #111; color: #ddd; border: none; padding: 8px; font-size: 14px; font-family: monospace; line-height: 1.5; resize: none; outline: none; white-space: pre; overflow-x: auto; wrap: off; tab-size: 4; }
 </style>
 </head>
 <body>
@@ -822,6 +822,57 @@ function scrollLineIntoView(line) {
   ta.scrollTop = target;
   ln.scrollTop = ta.scrollTop;
 }
+function editIndentation(value, start, end, outdent) {
+  if (start === end && !outdent) {
+    return {value: value.slice(0, start) + '\\t' + value.slice(end), start: start + 1, end: start + 1};
+  }
+
+  const lineStart = value.lastIndexOf('\\n', Math.max(0, start - 1)) + 1;
+  const selectionEndsAtNextLine = end > start && value[end - 1] === '\\n';
+  const effectiveEnd = selectionEndsAtNextLine ? end - 1 : end;
+  const nextNewline = value.indexOf('\\n', effectiveEnd);
+  const blockEnd = nextNewline === -1 ? value.length : nextNewline;
+  const block = value.slice(lineStart, blockEnd);
+  const lines = block.split('\\n');
+  const edits = [];
+  let offset = lineStart;
+
+  const changed = lines.map((line) => {
+    let remove = 0;
+    let insert = '';
+    if (outdent) {
+      if (line.startsWith('\\t')) remove = 1;
+      else {
+        const spaces = line.match(/^ {1,4}/);
+        if (spaces) remove = spaces[0].length;
+      }
+    } else {
+      insert = '\\t';
+    }
+    edits.push({position: offset, remove: remove, insert: insert.length});
+    offset += line.length + 1;
+    return insert + line.slice(remove);
+  }).join('\\n');
+
+  function mapOffset(original) {
+    let mapped = original;
+    edits.forEach((edit) => {
+      if (original <= edit.position) return;
+      if (original <= edit.position + edit.remove) {
+        mapped = edit.position + edit.insert;
+      } else {
+        mapped += edit.insert - edit.remove;
+      }
+    });
+    return mapped;
+  }
+
+  return {
+    value: value.slice(0, lineStart) + changed + value.slice(blockEnd),
+    start: mapOffset(start),
+    end: mapOffset(end)
+  };
+}
 function renderTabs() {
   tabsEl.textContent = '';
   tabs.forEach((tab, index) => {
@@ -974,6 +1025,16 @@ ta.addEventListener('input', () => {
   updateLines();
   updatePos();
   scheduleSave(300, activeTab);
+});
+ta.addEventListener('keydown', (event) => {
+  if (event.key !== 'Tab') return;
+  event.preventDefault();
+  const direction = ta.selectionDirection;
+  const edit = editIndentation(ta.value, ta.selectionStart, ta.selectionEnd, event.shiftKey);
+  if (edit.value === ta.value) return;
+  ta.value = edit.value;
+  ta.setSelectionRange(edit.start, edit.end, direction);
+  ta.dispatchEvent(new Event('input', {bubbles: true}));
 });
 ta.addEventListener('keyup', updatePos);
 ta.addEventListener('mouseup', updatePos);
