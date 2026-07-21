@@ -598,6 +598,7 @@ textarea { flex: 1; background: #111; color: #ddd; border: none; padding: 8px; f
   <span id="title">textpad_local</span>
   <span id="pos">Ln 1, Col 1</span>
   <span id="status">Saved</span>
+  <button id="add-row" type="button">add row below</button>
   <button id="clear">clear all</button>
 </div>
 <div id="editor">
@@ -822,6 +823,18 @@ function scrollLineIntoView(line) {
   ta.scrollTop = target;
   ln.scrollTop = ta.scrollTop;
 }
+function resetEditorToTop() {
+  ta.setSelectionRange(0, 0);
+  ta.scrollTop = 0;
+  ta.scrollLeft = 0;
+  ln.scrollTop = 0;
+  updatePos();
+  requestAnimationFrame(() => {
+    ta.scrollTop = 0;
+    ta.scrollLeft = 0;
+    ln.scrollTop = 0;
+  });
+}
 function editIndentation(value, start, end, outdent) {
   if (start === end && !outdent) {
     return {value: value.slice(0, start) + '\\t' + value.slice(end), start: start + 1, end: start + 1};
@@ -895,7 +908,7 @@ function loadActiveText() {
   dirty = false;
   applyDraft(activeTab);
   updateLines();
-  updatePos();
+  resetEditorToTop();
 }
 function connectEvents() {
   if (es) es.close();
@@ -1052,6 +1065,7 @@ ta.addEventListener('paste', () => {
 });
 window.addEventListener('beforeunload', () => saveNow(true));
 window.addEventListener('pagehide', () => saveNow(true));
+window.addEventListener('pageshow', resetEditorToTop);
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') {
     saveNow(true);
@@ -1074,6 +1088,18 @@ document.getElementById('clear').addEventListener('click', () => {
   updateLines();
   updatePos();
   saveNow(false);
+});
+document.getElementById('add-row').addEventListener('click', () => {
+  ta.value += '\\n';
+  const end = ta.value.length;
+  ta.setSelectionRange(end, end);
+  ta.dispatchEvent(new Event('input', {bubbles: true}));
+  ta.focus();
+  requestAnimationFrame(() => {
+    ta.scrollTop = ta.scrollHeight;
+    ta.scrollLeft = 0;
+    ln.scrollTop = ta.scrollTop;
+  });
 });
 document.getElementById('new-tab').addEventListener('submit', (e) => {
   e.preventDefault();

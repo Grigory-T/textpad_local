@@ -19,6 +19,8 @@ outside Git.
 - Real-time sync across all connected clients on the same tab via SSE (no refresh needed)
 - Line numbers and cursor position indicator
 - IDE-style `Tab` and `Shift+Tab` indentation for the cursor or all selected lines
+- `add row below` button for appending a line without scrolling through long text
+- Opens every page and tab at the top instead of restoring an arbitrary scroll position
 - Clear all button
 - Dark theme, monospace font
 - One-way plain-text tab mirror for the shared SMB folder
@@ -80,6 +82,7 @@ Open `http://<private-host-address>:<port>/`.
 
 - **Type** — content saves automatically after a short pause
 - **Indent** — `Tab` indents the current selection; `Shift+Tab` removes one tab or up to four leading spaces from each selected line
+- **Add row below** — appends a new last line, moves the caret there, and returns horizontal scroll to the left
 - **Tabs** — numbered tab names are at the top; use `add tab` to create a new one after the active tab
 - **Rename** — edit the current tab name and press `rename tab`
 - **Delete tab** — deletes the current tab; the last remaining tab cannot be deleted
