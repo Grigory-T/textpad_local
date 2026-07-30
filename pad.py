@@ -1457,8 +1457,9 @@ class PadHandler(BaseHTTPRequestHandler):
             )
             return
 
-        data, tab_id = select_tab(requested_tab_id(parsed))
-        if not find_tab(data, tab_id):
+        tab_id = requested_tab_id(parsed)
+        data = load_tabs()
+        if not tab_id or not find_tab(data, tab_id):
             self._not_found()
             log_event(
                 'request',

@@ -100,6 +100,50 @@ sudo systemctl stop textpad_local.service
 sudo journalctl -u textpad_local.service -f
 ```
 
+## HTTP API
+
+The browser and automation clients use the same small form-based HTTP API.
+All examples require access to the trusted private network.
+
+List tab IDs and names without printing their contents:
+
+```bash
+curl -fsS http://<private-host-address>:<port>/state |
+  python3 -c 'import json,sys; d=json.load(sys.stdin); [print(t["id"], t["name"], sep="\t") for t in d["tabs"]]'
+```
+
+Read one tab by its exact ID:
+
+```bash
+TAB_ID='example'
+curl -fsS http://<private-host-address>:<port>/state |
+  python3 -c 'import json,sys; print(json.load(sys.stdin)["contents"][sys.argv[1]], end="")' "$TAB_ID"
+```
+
+Create a tab. Parse the returned `active` field because the server makes a
+requested ID unique if it already exists:
+
+```bash
+curl -fsS -X POST http://<private-host-address>:<port>/tabs \
+  --data-urlencode 'json=1' \
+  --data-urlencode 'action=create' \
+  --data-urlencode 'id=agent-note' \
+  --data-urlencode 'name=Agent Note'
+```
+
+Replace the text of an existing tab:
+
+```bash
+TAB_ID='agent-note'
+curl -fsS -X POST "http://<private-host-address>:<port>/?tab=$TAB_ID" \
+  --data-urlencode 'text=Exact complete replacement text.'
+```
+
+A write requires an existing exact tab ID. Missing or unknown IDs return 404
+and never fall back to another tab. Writes replace the complete tab, so an
+agent should read immediately before a read-modify-write operation and should
+not rename, delete, or overwrite human text unless explicitly instructed.
+
 ## Files
 
 - `pad.py`             — server
