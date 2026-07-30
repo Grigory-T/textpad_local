@@ -15,6 +15,27 @@ from urllib.parse import urlencode
 ROOT = Path(__file__).resolve().parent
 
 
+def start_server(tmp):
+    return subprocess.Popen(
+        [sys.executable, 'pad.py'],
+        cwd=tmp,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+
+def stop_server(process):
+    process.terminate()
+    try:
+        process.wait(timeout=3)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.wait(timeout=3)
+    if process.returncode not in (0, -15):
+        raise RuntimeError(process.stderr.read())
+
+
 def request(port, method, path, fields=None):
     body = urlencode(fields).encode() if fields is not None else None
     headers = {'Content-Type': 'application/x-www-form-urlencoded'} if body else {}
@@ -25,6 +46,22 @@ def request(port, method, path, fields=None):
         return response.status, dict(response.getheaders()), response.read()
     finally:
         connection.close()
+
+
+def wait_for_server(port):
+    for _ in range(50):
+        try:
+            if request(port, 'GET', '/state')[0] == 200:
+                return
+        except OSError:
+            time.sleep(0.05)
+    raise RuntimeError('test server did not start')
+
+
+def state(port):
+    status, _, body = request(port, 'GET', '/state')
+    assert status == 200
+    return json.loads(body)
 
 
 def main():
@@ -39,22 +76,22 @@ def main():
             f"HOST = '127.0.0.1'\nPORT = {port}\nMIRROR_DIR = './mirror'\n",
             encoding='utf-8',
         )
-        process = subprocess.Popen(
-            [sys.executable, 'pad.py'],
-            cwd=tmp,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.PIPE,
-            text=True,
-        )
+        process = start_server(tmp)
         try:
-            for _ in range(50):
-                try:
-                    if request(port, 'GET', '/state')[0] == 200:
-                        break
-                except OSError:
-                    time.sleep(0.05)
-            else:
-                raise RuntimeError('test server did not start')
+            wait_for_server(port)
+            initial = state(port)
+            first_tab = initial['tabs'][0]['id']
+            first_text = initial['contents'][first_tab]
+
+            for path in ('/', '/?tab=', '/?tab=does-not-exist'):
+                status, _, _ = request(
+                    port,
+                    'POST',
+                    path,
+                    {'text': 'must not be written'},
+                )
+                assert status == 404
+                assert state(port)['contents'][first_tab] == first_text
 
             status, _, body = request(port, 'POST', '/tabs', {
                 'json': '1',
@@ -66,7 +103,25 @@ def main():
             created = json.loads(body)
             assert created['active'] == 'agent-api-test'
 
-            sentence = 'Agent API read and write test passed.'
+            status, _, body = request(port, 'POST', '/tabs', {
+                'json': '1',
+                'action': 'create',
+                'id': 'agent-api-test',
+                'name': 'Agent API Test',
+                'after': first_tab,
+            })
+            assert status == 200
+            duplicate = json.loads(body)
+            assert duplicate['active'] == 'agent-api-test-2'
+            ids = [tab['id'] for tab in duplicate['tabs']]
+            assert ids.index('agent-api-test-2') == ids.index(first_tab) + 1
+
+            sentence = (
+                'First line\n'
+                'Unicode: Привет, 你好, café, 😀\n'
+                'Reserved form characters: & = + % ? #\n'
+                'Trailing spaces stay here:  \n'
+            )
             status, headers, _ = request(
                 port,
                 'POST',
@@ -75,32 +130,58 @@ def main():
             )
             assert status == 204
             assert int(headers['X-Textpad-Revision']) > 0
+            assert state(port)['contents']['agent-api-test'] == sentence
 
-            status, _, body = request(port, 'GET', '/state')
-            assert status == 200
-            state = json.loads(body)
-            assert state['contents']['agent-api-test'] == sentence
-            first_tab = state['tabs'][0]['id']
-            first_text = state['contents'][first_tab]
+            large_text = '\n'.join(
+                f'{line:04d}: ' + ('x' * 248)
+                for line in range(1024)
+            )
+            status, _, _ = request(
+                port,
+                'POST',
+                '/?tab=agent-api-test-2',
+                {'text': large_text},
+            )
+            assert status == 204
+            assert state(port)['contents']['agent-api-test-2'] == large_text
 
             status, _, _ = request(
                 port,
                 'POST',
-                '/?tab=does-not-exist',
-                {'text': 'must not be written'},
+                '/?tab=agent-api-test-2',
+                {'text': ''},
             )
-            assert status == 404
-            state = json.loads(request(port, 'GET', '/state')[2])
-            assert state['contents'][first_tab] == first_text
-            assert 'does-not-exist' not in state['contents']
+            assert status == 204
+            assert state(port)['contents']['agent-api-test-2'] == ''
+
+            status, _, _ = request(
+                port,
+                'POST',
+                '/?tab=agent-api-test-2',
+                {'text': large_text},
+            )
+            assert status == 204
+
+            current = state(port)
+            assert current['contents'][first_tab] == first_text
+            assert 'does-not-exist' not in current['contents']
+            assert (tmp_path / 'tabs.json').read_bytes() == (
+                tmp_path / 'tabs.json.bak'
+            ).read_bytes()
+            for index, tab in enumerate(current['tabs'], 1):
+                mirror = next((tmp_path / 'mirror').glob(f'{index}. *.txt'))
+                assert mirror.read_text(encoding='utf-8') == current['contents'][tab['id']]
+
+            stop_server(process)
+            process = start_server(tmp)
+            wait_for_server(port)
+            persisted = state(port)
+            assert persisted['contents']['agent-api-test'] == sentence
+            assert persisted['contents']['agent-api-test-2'] == large_text
+            assert persisted['contents'][first_tab] == first_text
         finally:
-            process.terminate()
-            try:
-                process.wait(timeout=3)
-            except subprocess.TimeoutExpired:
-                process.kill()
-            if process.returncode not in (0, -15):
-                raise RuntimeError(process.stderr.read())
+            if process.poll() is None:
+                stop_server(process)
 
     print('API tests passed')
 

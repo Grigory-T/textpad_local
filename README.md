@@ -144,6 +144,17 @@ and never fall back to another tab. Writes replace the complete tab, so an
 agent should read immediately before a read-modify-write operation and should
 not rename, delete, or overwrite human text unless explicitly instructed.
 
+Run the isolated API regression test:
+
+```bash
+python3 test_api.py
+```
+
+It uses disposable data and covers missing, empty, and unknown write targets;
+duplicate requested IDs; insertion order; Unicode and reserved form characters;
+empty content; a 256 KiB multiline pad; source/mirror equality; registry backup
+equality; and persistence across a server restart.
+
 ## Files
 
 - `pad.py`             — server
