@@ -21,6 +21,8 @@ outside Git.
 - IDE-style `Tab` and `Shift+Tab` indentation for the cursor or all selected lines
 - `add row below` button for appending a line without scrolling through long text
 - Opens every page and tab at the top instead of restoring an arbitrary scroll position
+- Native browser undo and redo for normal typing and paste
+- Destructive `delete tab` action separated at the far right of the tab controls
 - Clear all button
 - Dark theme, monospace font
 - One-way plain-text tab mirror for the shared SMB folder
@@ -83,6 +85,7 @@ Open `http://<private-host-address>:<port>/`.
 - **Type** — content saves automatically after a short pause
 - **Indent** — `Tab` indents the current selection; `Shift+Tab` removes one tab or up to four leading spaces from each selected line
 - **Add row below** — appends a new last line, moves the caret there, and returns horizontal scroll to the left
+- **Undo/redo** — `Ctrl+Z` undoes normal typing or paste; `Ctrl+Shift+Z` redoes it in Chromium browsers
 - **Tabs** — numbered tab names are at the top; use `add tab` to create a new one after the active tab
 - **Rename** — edit the current tab name and press `rename tab`
 - **Delete tab** — deletes the current tab; the last remaining tab cannot be deleted
@@ -90,6 +93,11 @@ Open `http://<private-host-address>:<port>/`.
 - **Sync** — any other open instance of the same tab updates instantly without refreshing
 - **Clear all** — button in the toolbar wipes the current tab and syncs to all clients on that tab
 - **Mobile** — use browser menu → "Add to Home Screen" for one-tap access
+
+Undo history is native to each browser textarea. It intentionally resets on
+page reload, tab change, or a remote replacement from another client. Custom
+shared undo history is not implemented because undoing another client's write
+would be unsafe and ambiguous.
 
 ## Service management
 

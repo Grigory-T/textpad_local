@@ -561,7 +561,7 @@ body { background: #1a1a1a; color: #ddd; font-family: monospace; display: flex; 
 .tab.active { color: #fff; background: #555; border-color: #ddd; font-weight: bold; }
 #tab-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .action-block { display: flex; gap: 4px; align-items: center; padding: 5px 7px; border: 1px solid #333; background: #151515; }
-#delete-tab { margin-left: 10px; border-color: #4a2a2a; background: #181111; }
+#delete-tab { margin-left: auto; border-color: #4a2a2a; background: #181111; }
 #new-tab, #rename-tab, #delete-tab { display: flex; gap: 4px; align-items: center; }
 #new-tab input, #rename-tab input { width: 130px; background: #111; color: #ddd; border: 1px solid #444; padding: 3px 6px; font-family: monospace; }
 button { font-size: 12px; color: #aaa; background: #111; border: 1px solid #444; padding: 3px 8px; cursor: pointer; font-family: monospace; }
